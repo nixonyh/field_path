@@ -73,18 +73,26 @@ impl<S, T> Copy for Path<S, T> {}
 /// assert_eq!(foo.value, 999);
 /// ```
 ///
-/// Generic and qualified source types work as well, e.g.
-/// `path!(Vec2<f32>.x)` or `path!(std::ops::Range<u32>.start)`.
+/// The source type may be generic or qualified, with generic
+/// arguments in turbofish form: `path!(Vec2::<f32>.x)`.
 ///
-/// Nested tuple indices such as `.0.1` are lexed as a float by Rust,
-/// so they are not supported.
+/// ```compile_fail
+/// use field_path::path;
+/// struct Vec2<T> { x: T }
+/// let _ = path!(Vec2<f32>.x);
+/// ```
+///
+/// Nested tuple indices such as `.0.1` are not supported.
 #[macro_export]
 macro_rules! path {
-    ($($input:tt)+) => {
+    (@build [$source:ty] $(.$field:tt)*) => {
         $crate::path::Path::new(
-            $crate::field!($($input)+),
-            $crate::lens!($($input)+),
+            $crate::field!(@build [$source] $(.$field)*),
+            $crate::lens!(@build [$source] $(.$field)*),
         )
+    };
+    ($($input:tt)+) => {
+        $crate::__split_source!(path; $($input)+)
     };
 }
 
@@ -105,11 +113,11 @@ mod tests {
     fn dot_syntax() {
         const X: Path<Transform, f32> =
             path!(Transform.translation.x);
-        const GENERIC: Path<Vec2<f32>, f32> = path!(Vec2<f32>.x);
+        const GENERIC: Path<Vec2<f32>, f32> = path!(Vec2::<f32>.x);
         const TUPLE: Path<Pair, u32> = path!(Pair.1);
         assert_eq!(X.field.field_path(), ".translation.x");
         const QUALIFIED: Path<core::ops::Range<u32>, u32> =
-            path!(core::ops::Range<u32>.start);
+            path!(core::ops::Range::<u32>.start);
         assert_eq!(QUALIFIED.field.field_path(), ".start");
         assert_eq!(GENERIC.field.field_path(), ".x");
         assert_eq!(TUPLE.field.field_path(), ".1");
@@ -119,6 +127,6 @@ mod tests {
     // it.
     #[test]
     fn rustfmt_ugly() {
-        let _: Path<Transform, f32> = path!(Transform.translation.x);
+        let _ = path!(Transform.translation.x);
     }
 }

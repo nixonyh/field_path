@@ -182,12 +182,6 @@ impl<S, T> _FieldBuilder<S, T> {
 /// ```
 #[macro_export]
 macro_rules! field {
-    (@split [$($source:tt)+] $(.$field:tt)*) => {
-        $crate::field!(@build [$($source)+] $(.$field)*)
-    };
-    (@split [$($source:tt)*] $next:tt $($rest:tt)*) => {
-        $crate::field!(@split [$($source)* $next] $($rest)*)
-    };
     (@build [$source:ty] $(.$field:tt)*) => {
         $crate::field::_FieldBuilder::new(
             |source: $source| source$(.$field)*,
@@ -196,7 +190,7 @@ macro_rules! field {
         .build()
     };
     ($($input:tt)+) => {
-        $crate::field!(@split [] $($input)+)
+        $crate::__split_source!(field; $($input)+)
     };
 }
 

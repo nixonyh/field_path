@@ -122,12 +122,6 @@ impl<S, T> Copy for Lens<S, T> {}
 /// ```
 #[macro_export]
 macro_rules! lens {
-    (@split [$($source:tt)+] $(.$field:tt)*) => {
-        $crate::lens!(@build [$($source)+] $(.$field)*)
-    };
-    (@split [$($source:tt)*] $next:tt $($rest:tt)*) => {
-        $crate::lens!(@split [$($source)* $next] $($rest)*)
-    };
     (@build [$source:ty]) => {
         $crate::lens::Lens::new(
             #[inline(always)]
@@ -145,7 +139,7 @@ macro_rules! lens {
         )
     };
     ($($input:tt)+) => {
-        $crate::lens!(@split [] $($input)+)
+        $crate::__split_source!(lens; $($input)+)
     };
 }
 
@@ -275,5 +269,22 @@ mod tests {
         // Mismatched type parameters should return None
         let wrong: Option<Lens<Foo, f32>> = untyped.typed();
         assert!(wrong.is_none());
+    }
+
+    #[test]
+    fn identity_lens() {
+        const ID: Lens<Foo, Foo> = lens!(Foo);
+        let foo = Foo { x: 1, y: 2.0 };
+        assert_eq!(ID.get_ref(&foo), &foo);
+    }
+
+    #[test]
+    fn generic_source_lens() {
+        struct Wrapper<T>(T);
+
+        const INNER: Lens<Wrapper<u8>, u8> = lens!(Wrapper::<u8>.0);
+        let mut w = Wrapper(7);
+        *INNER.get_mut(&mut w) = 9;
+        assert_eq!(INNER.get_ref(&w), &9);
     }
 }

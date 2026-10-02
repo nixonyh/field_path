@@ -40,7 +40,7 @@ struct Vec2<T> {
     pub y: T,
 }
 
-const FIELD_PATH: Path<Vec2<f32>, f32> = path!(Vec2<f32>.x);
+const FIELD_PATH: Path<Vec2<f32>, f32> = path!(Vec2::<f32>.x);
 
 assert_eq!(FIELD_PATH.field.field_path(), ".x");
 
