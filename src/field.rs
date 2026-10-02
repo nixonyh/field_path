@@ -19,9 +19,9 @@ use crate::field;
 /// A statically typed field path from a source type `S` to a target
 /// type `T`.
 ///
-/// It uniquely identifies a target field path within a source `struct`
-/// through the `field_path`. The type parameters encode both the
-/// source type `S` and the resolved target type `T`.
+/// It uniquely identifies a target field path within a source
+/// `struct` through the `field_path`. The type parameters encode both
+/// the source type `S` and the resolved target type `T`.
 ///
 /// A `Field` can also be created at compile time, allowing us to
 /// create `const` or `static` fields.
@@ -33,18 +33,16 @@ use crate::field;
 ///
 /// ## Example
 /// ```
-/// use field_path::field;
 /// use field_path::field::Field;
-/// use field_path::stringify_field;
+/// use field_path::{field, stringify_field};
 ///
 /// struct Player {
 ///     name: String,
 ///     age: u32,
 /// }
 ///
-/// const PLAYER_AGE: Field<Player, u32> = Field::new(
-///     stringify_field!(::age)
-/// );
+/// const PLAYER_AGE: Field<Player, u32> =
+///     Field::new(stringify_field!(::age));
 ///
 /// assert_eq!(PLAYER_AGE.field_path(), "::age");
 /// ```
@@ -59,8 +57,8 @@ pub struct Field<S, T> {
 }
 
 impl<S, T> Field<S, T> {
-    /// A field with a placeholder field path. This does not correspond
-    /// to a vaild field path!
+    /// A field with a placeholder field path. This does not
+    /// correspond to a vaild field path!
     pub const PLACEHOLDER: Self = Self::new("$");
 
     /// Construct a new [`Field`] from a raw field path string.
@@ -311,8 +309,8 @@ where
 /// Stringify a field path into its canonical string form.
 ///
 /// This macro is used within the [`field!`] macro for supporting
-/// auto-completion of nested fields while still being able to generate
-/// "stringify" field paths from raw tokens!
+/// auto-completion of nested fields while still being able to
+/// generate "stringify" field paths from raw tokens!
 ///
 /// ## Example
 ///

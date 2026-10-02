@@ -9,7 +9,6 @@ use core::hash::{Hash, Hasher};
 
 use crate::field::Field;
 use crate::lens::Lens;
-
 // For docs.
 #[expect(unused_imports)]
 use crate::path;
@@ -59,7 +58,9 @@ impl<S, T> Copy for Path<S, T> {}
 /// use field_path::path;
 /// use field_path::path::Path;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
 /// const FOO_FIELD_ACC: Path<Foo, i32> = path!(<Foo>::value);
 ///

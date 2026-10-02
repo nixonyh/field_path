@@ -34,10 +34,16 @@ use crate::lens;
 /// ```
 /// use field_path::lens::Lens;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
-/// fn ref_fn(s: &Foo) -> &i32 { &s.value }
-/// fn mut_fn(s: &mut Foo) -> &mut i32 { &mut s.value }
+/// fn ref_fn(s: &Foo) -> &i32 {
+///     &s.value
+/// }
+/// fn mut_fn(s: &mut Foo) -> &mut i32 {
+///     &mut s.value
+/// }
 ///
 /// const FOO_ACC: Lens<Foo, i32> = Lens::new(ref_fn, mut_fn);
 /// let mut foo = Foo { value: 42 };
@@ -103,7 +109,9 @@ impl<S, T> Copy for Lens<S, T> {}
 /// use field_path::lens;
 /// use field_path::lens::Lens;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
 /// const FOO_ACC: Lens<Foo, i32> = lens!(<Foo>::value);
 /// let mut foo = Foo { value: 42 };

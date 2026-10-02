@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: rustup component add rustfmt
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - run: cargo fmt --all -- --check
 
   check:
