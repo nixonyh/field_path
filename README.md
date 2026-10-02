@@ -40,9 +40,9 @@ struct Vec2<T> {
     pub y: T,
 }
 
-const FIELD_PATH: Path<Vec2<f32>, f32> = path!(<Vec2<f32>>::x);
+const FIELD_PATH: Path<Vec2<f32>, f32> = path!(Vec2<f32>.x);
 
-assert_eq!(FIELD_PATH.field.field_path(), "::x");
+assert_eq!(FIELD_PATH.field.field_path(), ".x");
 
 let mut v = Vec2::default();
 *FIELD_PATH.lens.get_mut(&mut v) = 42.0;

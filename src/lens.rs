@@ -113,7 +113,7 @@ impl<S, T> Copy for Lens<S, T> {}
 ///     value: i32,
 /// }
 ///
-/// const FOO_ACC: Lens<Foo, i32> = lens!(<Foo>::value);
+/// const FOO_ACC: Lens<Foo, i32> = lens!(Foo.value);
 /// let mut foo = Foo { value: 42 };
 ///
 /// assert_eq!(FOO_ACC.get_ref(&foo), &42);
@@ -122,7 +122,13 @@ impl<S, T> Copy for Lens<S, T> {}
 /// ```
 #[macro_export]
 macro_rules! lens {
-    (<$source:ty>) => {
+    (@split [$($source:tt)+] $(.$field:tt)*) => {
+        $crate::lens!(@build [$($source)+] $(.$field)*)
+    };
+    (@split [$($source:tt)*] $next:tt $($rest:tt)*) => {
+        $crate::lens!(@split [$($source)* $next] $($rest)*)
+    };
+    (@build [$source:ty]) => {
         $crate::lens::Lens::new(
             #[inline(always)]
             |s: &$source| s,
@@ -130,13 +136,16 @@ macro_rules! lens {
             |s: &mut $source| s,
         )
     };
-    (<$source:ty>$(::$field:tt)+) => {
+    (@build [$source:ty] $(.$field:tt)+) => {
         $crate::lens::Lens::new(
             #[inline(always)]
             |s: &$source| &s$(.$field)+,
             #[inline(always)]
             |s: &mut $source| &mut s$(.$field)+
         )
+    };
+    ($($input:tt)+) => {
+        $crate::lens!(@split [] $($input)+)
     };
 }
 
@@ -242,7 +251,7 @@ mod tests {
 
     #[test]
     fn lens_roundtrip_typed_untyped() {
-        let acc: Lens<Foo, i32> = lens!(<Foo>::x);
+        let acc: Lens<Foo, i32> = lens!(Foo.x);
 
         let untyped = acc.untyped();
         let typed_back: Lens<Foo, i32> = untyped.typed().unwrap();
@@ -259,7 +268,7 @@ mod tests {
 
     #[test]
     fn untyped_typed_mismatch_fails() {
-        let acc: Lens<Foo, i32> = lens!(<Foo>::x);
+        let acc: Lens<Foo, i32> = lens!(Foo.x);
 
         let untyped = acc.untyped();
 

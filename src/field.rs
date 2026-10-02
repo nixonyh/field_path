@@ -42,16 +42,16 @@ use crate::field;
 /// }
 ///
 /// const PLAYER_AGE: Field<Player, u32> =
-///     Field::new(stringify_field!(::age));
+///     Field::new(stringify_field!(.age));
 ///
-/// assert_eq!(PLAYER_AGE.field_path(), "::age");
+/// assert_eq!(PLAYER_AGE.field_path(), ".age");
 /// ```
 #[derive(Debug)]
 pub struct Field<S, T> {
     /// The path of the target field in the source.
     ///
-    /// Example: `Transform::translation::x` will have a field path
-    /// of `"::translation::x"`.
+    /// Example: `Transform.translation.x` will have a field path
+    /// of `".translation.x"`.
     field_path: &'static str,
     _marker: PhantomData<fn() -> (S, T)>,
 }
@@ -175,19 +175,28 @@ impl<S, T> _FieldBuilder<S, T> {
 ///     age: u32,
 /// }
 ///
-/// const PLAYER_NAME: Field<Player, String> = field!(<Player>::name);
-/// let PLAYER_AGE: Field<Player, u32> = field!(<Player>::age);
+/// const PLAYER_NAME: Field<Player, String> = field!(Player.name);
+/// let PLAYER_AGE: Field<Player, u32> = field!(Player.age);
 ///
 /// assert_ne!(PLAYER_NAME.untyped(), PLAYER_AGE.untyped());
 /// ```
 #[macro_export]
 macro_rules! field {
-    (<$source:ty>$(::$field:tt)*) => {
+    (@split [$($source:tt)+] $(.$field:tt)*) => {
+        $crate::field!(@build [$($source)+] $(.$field)*)
+    };
+    (@split [$($source:tt)*] $next:tt $($rest:tt)*) => {
+        $crate::field!(@split [$($source)* $next] $($rest)*)
+    };
+    (@build [$source:ty] $(.$field:tt)*) => {
         $crate::field::_FieldBuilder::new(
             |source: $source| source$(.$field)*,
-            $crate::stringify_field!($(::$field)*),
+            $crate::stringify_field!($(.$field)*),
         )
         .build()
+    };
+    ($($input:tt)+) => {
+        $crate::field!(@split [] $($input)+)
     };
 }
 
@@ -317,13 +326,13 @@ where
 /// ```
 /// use field_path::stringify_field;
 ///
-/// let stringify = stringify_field!(::translation::x);
-/// assert_eq!(stringify, "::translation::x");
+/// let stringify = stringify_field!(.translation.x);
+/// assert_eq!(stringify, ".translation.x");
 /// ```
 #[macro_export]
 macro_rules! stringify_field {
-    ($(::$field:tt)*) => {
-        concat!($("::", stringify!($field),)*)
+    ($(.$field:tt)*) => {
+        concat!($(".", stringify!($field),)*)
     };
 }
 
@@ -341,18 +350,18 @@ mod tests {
 
     #[test]
     fn field_path_matches() {
-        const FIELD: Field<Foo, Foo> = field!(<Foo>);
+        const FIELD: Field<Foo, Foo> = field!(Foo);
         assert_eq!(FIELD.field_path, "");
 
-        const FIELD_0: Field<Foo, u32> = field!(<Foo>::0);
-        assert_eq!(FIELD_0.field_path, stringify_field!(::0), "::0");
+        const FIELD_0: Field<Foo, u32> = field!(Foo.0);
+        assert_eq!(FIELD_0.field_path, stringify_field!(.0), ".0");
 
         const FIELD_INNER_0: Field<NestedFoo, u32> =
-            field!(<NestedFoo>::inner::0);
+            field!(NestedFoo.inner.0);
         assert_eq!(
             FIELD_INNER_0.field_path,
-            stringify_field!(::inner::0),
-            "::inner::0"
+            stringify_field!(.inner.0),
+            ".inner.0"
         );
     }
 }
