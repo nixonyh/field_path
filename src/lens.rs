@@ -34,10 +34,16 @@ use crate::lens;
 /// ```
 /// use field_path::lens::Lens;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
-/// fn ref_fn(s: &Foo) -> &i32 { &s.value }
-/// fn mut_fn(s: &mut Foo) -> &mut i32 { &mut s.value }
+/// fn ref_fn(s: &Foo) -> &i32 {
+///     &s.value
+/// }
+/// fn mut_fn(s: &mut Foo) -> &mut i32 {
+///     &mut s.value
+/// }
 ///
 /// const FOO_ACC: Lens<Foo, i32> = Lens::new(ref_fn, mut_fn);
 /// let mut foo = Foo { value: 42 };
@@ -103,9 +109,11 @@ impl<S, T> Copy for Lens<S, T> {}
 /// use field_path::lens;
 /// use field_path::lens::Lens;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
-/// const FOO_ACC: Lens<Foo, i32> = lens!(<Foo>::value);
+/// const FOO_ACC: Lens<Foo, i32> = lens!(Foo.value);
 /// let mut foo = Foo { value: 42 };
 ///
 /// assert_eq!(FOO_ACC.get_ref(&foo), &42);
@@ -114,7 +122,7 @@ impl<S, T> Copy for Lens<S, T> {}
 /// ```
 #[macro_export]
 macro_rules! lens {
-    (<$source:ty>) => {
+    (@build [$source:ty]) => {
         $crate::lens::Lens::new(
             #[inline(always)]
             |s: &$source| s,
@@ -122,13 +130,16 @@ macro_rules! lens {
             |s: &mut $source| s,
         )
     };
-    (<$source:ty>$(::$field:tt)+) => {
+    (@build [$source:ty] $(.$field:tt)+) => {
         $crate::lens::Lens::new(
             #[inline(always)]
             |s: &$source| &s$(.$field)+,
             #[inline(always)]
             |s: &mut $source| &mut s$(.$field)+
         )
+    };
+    ($($input:tt)+) => {
+        $crate::__split_source!(lens; $($input)+)
     };
 }
 
@@ -234,7 +245,7 @@ mod tests {
 
     #[test]
     fn lens_roundtrip_typed_untyped() {
-        let acc: Lens<Foo, i32> = lens!(<Foo>::x);
+        let acc: Lens<Foo, i32> = lens!(Foo.x);
 
         let untyped = acc.untyped();
         let typed_back: Lens<Foo, i32> = untyped.typed().unwrap();
@@ -251,12 +262,29 @@ mod tests {
 
     #[test]
     fn untyped_typed_mismatch_fails() {
-        let acc: Lens<Foo, i32> = lens!(<Foo>::x);
+        let acc: Lens<Foo, i32> = lens!(Foo.x);
 
         let untyped = acc.untyped();
 
         // Mismatched type parameters should return None
         let wrong: Option<Lens<Foo, f32>> = untyped.typed();
         assert!(wrong.is_none());
+    }
+
+    #[test]
+    fn identity_lens() {
+        const ID: Lens<Foo, Foo> = lens!(Foo);
+        let foo = Foo { x: 1, y: 2.0 };
+        assert_eq!(ID.get_ref(&foo), &foo);
+    }
+
+    #[test]
+    fn generic_source_lens() {
+        struct Wrapper<T>(T);
+
+        const INNER: Lens<Wrapper<u8>, u8> = lens!(Wrapper::<u8>.0);
+        let mut w = Wrapper(7);
+        *INNER.get_mut(&mut w) = 9;
+        assert_eq!(INNER.get_ref(&w), &9);
     }
 }

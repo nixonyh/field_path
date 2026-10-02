@@ -19,9 +19,9 @@ use crate::field;
 /// A statically typed field path from a source type `S` to a target
 /// type `T`.
 ///
-/// It uniquely identifies a target field path within a source `struct`
-/// through the `field_path`. The type parameters encode both the
-/// source type `S` and the resolved target type `T`.
+/// It uniquely identifies a target field path within a source
+/// `struct` through the `field_path`. The type parameters encode both
+/// the source type `S` and the resolved target type `T`.
 ///
 /// A `Field` can also be created at compile time, allowing us to
 /// create `const` or `static` fields.
@@ -33,34 +33,32 @@ use crate::field;
 ///
 /// ## Example
 /// ```
-/// use field_path::field;
 /// use field_path::field::Field;
-/// use field_path::stringify_field;
+/// use field_path::{field, stringify_field};
 ///
 /// struct Player {
 ///     name: String,
 ///     age: u32,
 /// }
 ///
-/// const PLAYER_AGE: Field<Player, u32> = Field::new(
-///     stringify_field!(::age)
-/// );
+/// const PLAYER_AGE: Field<Player, u32> =
+///     Field::new(stringify_field!(.age));
 ///
-/// assert_eq!(PLAYER_AGE.field_path(), "::age");
+/// assert_eq!(PLAYER_AGE.field_path(), ".age");
 /// ```
 #[derive(Debug)]
 pub struct Field<S, T> {
     /// The path of the target field in the source.
     ///
-    /// Example: `Transform::translation::x` will have a field path
-    /// of `"::translation::x"`.
+    /// Example: `Transform.translation.x` will have a field path
+    /// of `".translation.x"`.
     field_path: &'static str,
     _marker: PhantomData<fn() -> (S, T)>,
 }
 
 impl<S, T> Field<S, T> {
-    /// A field with a placeholder field path. This does not correspond
-    /// to a vaild field path!
+    /// A field with a placeholder field path. This does not
+    /// correspond to a vaild field path!
     pub const PLACEHOLDER: Self = Self::new("$");
 
     /// Construct a new [`Field`] from a raw field path string.
@@ -177,19 +175,22 @@ impl<S, T> _FieldBuilder<S, T> {
 ///     age: u32,
 /// }
 ///
-/// const PLAYER_NAME: Field<Player, String> = field!(<Player>::name);
-/// let PLAYER_AGE: Field<Player, u32> = field!(<Player>::age);
+/// const PLAYER_NAME: Field<Player, String> = field!(Player.name);
+/// let PLAYER_AGE: Field<Player, u32> = field!(Player.age);
 ///
 /// assert_ne!(PLAYER_NAME.untyped(), PLAYER_AGE.untyped());
 /// ```
 #[macro_export]
 macro_rules! field {
-    (<$source:ty>$(::$field:tt)*) => {
+    (@build [$source:ty] $(.$field:tt)*) => {
         $crate::field::_FieldBuilder::new(
             |source: $source| source$(.$field)*,
-            $crate::stringify_field!($(::$field)*),
+            $crate::stringify_field!($(.$field)*),
         )
         .build()
+    };
+    ($($input:tt)+) => {
+        $crate::__split_source!(field; $($input)+)
     };
 }
 
@@ -311,21 +312,21 @@ where
 /// Stringify a field path into its canonical string form.
 ///
 /// This macro is used within the [`field!`] macro for supporting
-/// auto-completion of nested fields while still being able to generate
-/// "stringify" field paths from raw tokens!
+/// auto-completion of nested fields while still being able to
+/// generate "stringify" field paths from raw tokens!
 ///
 /// ## Example
 ///
 /// ```
 /// use field_path::stringify_field;
 ///
-/// let stringify = stringify_field!(::translation::x);
-/// assert_eq!(stringify, "::translation::x");
+/// let stringify = stringify_field!(.translation.x);
+/// assert_eq!(stringify, ".translation.x");
 /// ```
 #[macro_export]
 macro_rules! stringify_field {
-    ($(::$field:tt)*) => {
-        concat!($("::", stringify!($field),)*)
+    ($(.$field:tt)*) => {
+        concat!($(".", stringify!($field),)*)
     };
 }
 
@@ -343,18 +344,18 @@ mod tests {
 
     #[test]
     fn field_path_matches() {
-        const FIELD: Field<Foo, Foo> = field!(<Foo>);
+        const FIELD: Field<Foo, Foo> = field!(Foo);
         assert_eq!(FIELD.field_path, "");
 
-        const FIELD_0: Field<Foo, u32> = field!(<Foo>::0);
-        assert_eq!(FIELD_0.field_path, stringify_field!(::0), "::0");
+        const FIELD_0: Field<Foo, u32> = field!(Foo.0);
+        assert_eq!(FIELD_0.field_path, stringify_field!(.0), ".0");
 
         const FIELD_INNER_0: Field<NestedFoo, u32> =
-            field!(<NestedFoo>::inner::0);
+            field!(NestedFoo.inner.0);
         assert_eq!(
             FIELD_INNER_0.field_path,
-            stringify_field!(::inner::0),
-            "::inner::0"
+            stringify_field!(.inner.0),
+            ".inner.0"
         );
     }
 }

@@ -9,7 +9,6 @@ use core::hash::{Hash, Hasher};
 
 use crate::field::Field;
 use crate::lens::Lens;
-
 // For docs.
 #[expect(unused_imports)]
 use crate::path;
@@ -59,11 +58,13 @@ impl<S, T> Copy for Path<S, T> {}
 /// use field_path::path;
 /// use field_path::path::Path;
 ///
-/// struct Foo { value: i32 }
+/// struct Foo {
+///     value: i32,
+/// }
 ///
-/// const FOO_FIELD_ACC: Path<Foo, i32> = path!(<Foo>::value);
+/// const FOO_FIELD_ACC: Path<Foo, i32> = path!(Foo.value);
 ///
-/// assert_eq!(FOO_FIELD_ACC.field.field_path(), "::value");
+/// assert_eq!(FOO_FIELD_ACC.field.field_path(), ".value");
 ///
 /// let mut foo = Foo { value: 42 };
 ///
@@ -71,12 +72,61 @@ impl<S, T> Copy for Path<S, T> {}
 /// *FOO_FIELD_ACC.lens.get_mut(&mut foo) = 999;
 /// assert_eq!(foo.value, 999);
 /// ```
+///
+/// The source type may be generic or qualified, with generic
+/// arguments in turbofish form: `path!(Vec2::<f32>.x)`.
+///
+/// ```compile_fail
+/// use field_path::path;
+/// struct Vec2<T> { x: T }
+/// let _ = path!(Vec2<f32>.x);
+/// ```
+///
+/// Nested tuple indices such as `.0.1` are not supported.
 #[macro_export]
 macro_rules! path {
-    (<$source:ty>$(::$field:tt)*) => {
+    (@build [$source:ty] $(.$field:tt)*) => {
         $crate::path::Path::new(
-            $crate::field!(<$source>$(::$field)*),
-            $crate::lens!(<$source>$(::$field)*),
+            $crate::field!(@build [$source] $(.$field)*),
+            $crate::lens!(@build [$source] $(.$field)*),
         )
     };
+    ($($input:tt)+) => {
+        $crate::__split_source!(path; $($input)+)
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Vec2<T> {
+        x: T,
+    }
+    struct Transform {
+        translation: Vec2<f32>,
+    }
+    #[allow(dead_code)]
+    struct Pair(u32, u32);
+
+    #[test]
+    fn dot_syntax() {
+        const X: Path<Transform, f32> =
+            path!(Transform.translation.x);
+        const GENERIC: Path<Vec2<f32>, f32> = path!(Vec2::<f32>.x);
+        const TUPLE: Path<Pair, u32> = path!(Pair.1);
+        assert_eq!(X.field.field_path(), ".translation.x");
+        const QUALIFIED: Path<core::ops::Range<u32>, u32> =
+            path!(core::ops::Range::<u32>.start);
+        assert_eq!(QUALIFIED.field.field_path(), ".start");
+        assert_eq!(GENERIC.field.field_path(), ".x");
+        assert_eq!(TUPLE.field.field_path(), ".1");
+    }
+
+    // Deliberately badly spaced; `cargo fmt --check` must normalize
+    // it.
+    #[test]
+    fn rustfmt_ugly() {
+        let _ = path!(Transform.translation.x);
+    }
 }
