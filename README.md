@@ -31,22 +31,57 @@ types.
 ## Example
 
 ```rust
+use std::collections::HashMap;
+
 use field_path::path;
 use field_path::path::Path;
 
-#[derive(Default)]
 struct Vec2<T> {
-    pub x: T,
-    pub y: T,
+    x: T,
+    y: T,
 }
 
-const FIELD_PATH: Path<Vec2<f32>, f32> = path!(Vec2::<f32>.x);
+struct Transform {
+    translation: Vec2<f32>,
+    scale: f32,
+}
 
-assert_eq!(FIELD_PATH.field.field_path(), ".x");
+struct Pair(u32, u32);
 
-let mut v = Vec2::default();
-*FIELD_PATH.lens.get_mut(&mut v) = 42.0;
-assert_eq!(FIELD_PATH.lens.get_ref(&v), &42.0);
+// Paths are `const` and can reach nested fields, tuple indices and
+// generic sources.
+const TRANSLATION_X: Path<Transform, f32> =
+    path!(Transform.translation.x);
+const SCALE: Path<Transform, f32> = path!(Transform.scale);
+const SECOND: Path<Pair, u32> = path!(Pair.1);
+const GENERIC_Y: Path<Vec2<f32>, f32> = path!(Vec2::<f32>.y);
+
+assert_eq!(TRANSLATION_X.field.field_path(), ".translation.x");
+assert_eq!(SECOND.field.field_path(), ".1");
+
+// Read and write through the lens.
+let mut transform = Transform {
+    translation: Vec2 { x: 1.0, y: 2.0 },
+    scale: 1.0,
+};
+*TRANSLATION_X.lens.get_mut(&mut transform) = 10.0;
+assert_eq!(TRANSLATION_X.lens.get_ref(&transform), &10.0);
+assert_eq!(GENERIC_Y.lens.get_ref(&transform.translation), &2.0);
+
+// Erase the types to store different fields in one collection.
+let mut registry = HashMap::new();
+for path in [TRANSLATION_X, SCALE] {
+    registry.insert(path.field.untyped(), path.lens.untyped());
+}
+
+// Recover the typed lens by key. The source and target types are
+// checked, so a mismatch returns `None`.
+let scale = registry[&SCALE.field.untyped()];
+assert!(scale.typed::<Transform, u32>().is_none());
+
+let scale = scale.typed::<Transform, f32>().unwrap();
+*scale.get_mut(&mut transform) *= 2.0;
+assert_eq!(transform.scale, 2.0);
 ```
 
 ## Join the community!
